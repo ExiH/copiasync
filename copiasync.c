@@ -26,14 +26,57 @@ int main(int argc, char **argv){
 		exit(0);
 	}
 	//apertura del file copia
-	if((filenoCopia = open("copia.txt", O_CREAT | O_TRUNC | O_APPEND, 0644)) == -1){
+	if((filenoCopia = open("copia.txt", O_CREAT | O_TRUNC | O_APPEND | O_WRONLY, 0644)) == -1){
 		fprintf(stderr, "Errore nella creazione di copia\n");
 		exit(0);
 	}
-	printf("%lu", write(filenoCopia, "a", 1));
 	//rimozione del file di controllo nel caso esistesse ancora
 	unlink("check");
 	//creazione primo figlio
+	pidTemp = fork();
+	
+	
+	if(pidTemp == 0){
+		char c; //"buffer" per leggere elenco
+		int pid = fork(); //pid == 0 per il copiatore di consonanti, > 0 per il copiatore di vocali
+		while(1){
+			if(pid == 0){
+				while(access("check", F_OK) == 0);  //opera quando il file non esiste
+				if(read(filenoElenco, &c, 1) <= 0){
+					fprintf(stderr, "addio consonantiere\n");
+					lseek(filenoElenco, -1, SEEK_CUR);
+					open("check", O_CREAT, 0744);
+					exit(0);
+				}
+				fprintf(stderr, "Consonantiere: %c\n", c);
+				if(!isVowel(c)){
+					write(filenoCopia, &c, 1);
+				}
+				lseek(filenoElenco, -1, SEEK_CUR);
+				open("check", O_CREAT, 0744);
+			}
+			else{ //il pid è maggiore di 0
+				while(access("check", F_OK) ==-1); //opera quando il file esiste
+				if(read(filenoElenco, &c, 1) <= 0){
+					fprintf(stderr, "addio vocaliere\n");
+					unlink("check");
+					exit(0);
+				}
+				fprintf(stderr, "Vocaliere: %c\n", c);
+				if(isVowel(c)){
+					printf("%lu", write(filenoCopia, &c, 1));
+				}
+				unlink("check"); //resetta
+			}
+		}
+		
+	}
+	else{
+		printf("Addio padre\n");
+		exit(0); //il padre originale cessa di esistere
+	}
+	
+}
 	pidTemp = fork();
 	
 	
